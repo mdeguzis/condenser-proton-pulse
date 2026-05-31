@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm ci
@@ -35,7 +35,7 @@ jobs:
       - name: Create release zip
         run: |
           mkdir -p release
-          cp dist/frontend.js dist/backend.cjs release/
+          cp dist/frontend.js dist/backend.mjs release/
           cd release
           zip -r "../${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip" .
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Standalone production build for a condenser plugin.
- * Produces dist/frontend.js (ESM) and dist/backend.cjs (CJS).
+ * Produces dist/frontend.js and dist/backend.mjs — both ESM.
  *
  * condenser:api, react, and react/jsx-runtime are resolved to the shims
  * bundled in this repo so the output is self-contained.
@@ -36,9 +36,9 @@ await build({
   entryPoints: [path.join(root, 'backend.ts')],
   bundle: true,
   platform: 'node',
-  target: 'node20',
-  format: 'cjs',
-  outfile: path.join(root, 'dist/backend.cjs'),
+  target: 'node24',
+  format: 'esm',
+  outfile: path.join(root, 'dist/backend.mjs'),
 });
 
-console.log('Build complete: dist/frontend.js + dist/backend.cjs');
+console.log('Build complete: dist/frontend.js + dist/backend.mjs');
