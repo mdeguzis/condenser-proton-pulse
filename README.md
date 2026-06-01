@@ -44,7 +44,7 @@ export const route = '/my-plugin/home';
 npm run dev
 ```
 
-This finds `condenser-app` in the sibling directory, sets `CONDENSER_PLUGINS_DIR` to your plugin's directory, and starts the condenser-app dev server with your plugin loaded and hot-reloaded automatically.
+This finds `condenser-app` in the sibling directory and starts the condenser-app dev server with your plugin loaded and hot-reloaded automatically. The plugin repo must be a sibling of `condenser-app` so the directory name is used as the plugin ID — make sure it matches the `key` export in `frontend.tsx`.
 
 If condenser-app is not a sibling, set the path explicitly:
 

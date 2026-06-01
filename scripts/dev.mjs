@@ -15,6 +15,10 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginDir = path.resolve(__dirname, '..');
+// condenser-app expects a directory that *contains* plugin subdirectories (same
+// convention as condenser-app/plugins/).  The plugin repo itself IS one plugin,
+// so we pass its parent directory so the loader finds <parent>/<repo-name>/.
+const pluginsParentDir = path.dirname(pluginDir);
 
 function findCondenserApp() {
   if (process.env.CONDENSER_APP_PATH) {
@@ -39,10 +43,11 @@ function findCondenserApp() {
 const appDir = findCondenserApp();
 console.log(`[condenser-dev] app:    ${appDir}`);
 console.log(`[condenser-dev] plugin: ${pluginDir}`);
+console.log(`[condenser-dev] dir:    ${pluginsParentDir}`);
 console.log('');
 
 execSync('npm run dev', {
   cwd: appDir,
   stdio: 'inherit',
-  env: { ...process.env, CONDENSER_PLUGINS_DIR: pluginDir },
+  env: { ...process.env, CONDENSER_PLUGINS_DIR: pluginsParentDir },
 });

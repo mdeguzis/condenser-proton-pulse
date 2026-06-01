@@ -1,6 +1,11 @@
 /// <reference lib="dom" />
 import { useState, useEffect } from 'react';
-import { useSend, navigate, back, showToast, Focusable } from 'condenser:api';
+import {
+  useSend,
+  navigate, back,
+  showToast, showModal, showContextMenu,
+  Focusable, Menu, MenuItem,
+} from 'condenser:api';
 
 // ---- Plugin identity ----
 // key must be unique across all installed plugins and match the directory name.
@@ -14,13 +19,41 @@ export const route = '/condenser-plugin/home';
 // Full-screen page shown when the user opens your plugin.
 export function Page(_: { websocketUrl: string }) {
   const send = useSend(key);
+  const [count, setCount] = useState(0);
   const [info, setInfo] = useState<{ platform: string; uptime: number; memory: number } | null>(null);
 
   useEffect(() => {
+    send('getCount').then((r: any) => setCount(r.count));
     send('getInfo').then((r: any) => setInfo(r)).catch(() => {});
   }, []);
 
-  const handleToast = () => showToast({ title, body: 'Hello from My Plugin!', duration: 3000 });
+  const handleClick = async () => {
+    const r = await send('click') as { count: number };
+    setCount(r.count);
+  };
+
+  const handleToast = () => showToast({
+    title,
+    body: 'showToast() called from condenser:api.',
+    duration: 4000,
+  });
+
+  const handleModal = () => showModal(
+    <p>Opened via showModal() from condenser:api.</p>,
+    undefined,
+    { strTitle: 'Modal component' },
+  );
+
+  const handleContextMenu = (e: any) => {
+    e.preventDefault();
+    showContextMenu(
+      <Menu label={title}>
+        <MenuItem onClick={handleModal}>Show Modal</MenuItem>
+        <MenuItem onClick={handleToast}>Show Toast</MenuItem>
+      </Menu>,
+      e.currentTarget,
+    );
+  };
 
   const fmt = (s: number) => `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 
@@ -34,9 +67,11 @@ export function Page(_: { websocketUrl: string }) {
         ← Back
       </button>
       <Focusable flow-children="column" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 16px' }}>
-        <button className="DialogButton _DialogLayout Secondary" onClick={handleToast}>
-          Show Toast
+        <button className="DialogButton _DialogLayout Secondary" onClick={handleClick} onContextMenu={handleContextMenu}>
+          {count > 0 ? `Send Request (${count})` : 'Send Request'}
         </button>
+        <button className="DialogButton _DialogLayout Secondary" onClick={handleModal}>Show Modal</button>
+        <button className="DialogButton _DialogLayout Secondary" onClick={handleToast}>Show Toast</button>
         {info && (
           <div style={{ fontSize: 12, color: 'var(--gpSystemLighterGrey)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span>Platform: {info.platform}</span>
