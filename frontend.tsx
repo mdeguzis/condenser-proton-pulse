@@ -14,9 +14,8 @@ const { createStyleToggle, Target }   = condenser.css;
 // ---- CSS examples ----
 // Defined outside React so state survives navigation away and back.
 //
-// Cross-platform — stable IDs / aria-labels present on both desktop and SteamOS.
-// SteamOS only   — [class*="module_ClassName_"] selectors from stable.orig.json.
-//                  Desktop Steam obfuscates all class names, so these inject but match nothing.
+// Cross-platform — stable IDs / aria-labels, and runtime webpack class lookup (Target.Library/Settings).
+// BPM only       — Target.QuickAccess / Target.MainMenu (separate popup windows that don't exist on Desktop).
 
 const examples = [
   // ---- Cross-platform (stable IDs / aria-labels) ----
@@ -74,9 +73,9 @@ const examples = [
     scope:    'Target.Global',
     platform: 'both',
     type:     'StyleSheet',
-    hint:     'Targets body in BigPicture + MainMenu + QuickAccess — white outline on all BPM windows',
+    hint:     'Targets body in BigPicture + MainMenu + QuickAccess — switches all text to monospace font across every BPM window',
     toggle:   createStyleToggle(key,
-      { 'body': { outline: '3px solid #e0e0e0', outlineOffset: '-3px' } },
+      { 'body': { fontFamily: 'monospace' } },
       Target.Global,
     ),
   },
@@ -86,20 +85,20 @@ const examples = [
     scope:    'Target.QuickAccess',
     platform: 'both',
     type:     'StyleSheet',
-    hint:     'Open Quick Access first then enable — teal outline on the popup body',
+    hint:     'Enable then open Quick Access — teal outline around the QAM panel',
     toggle:   createStyleToggle(key,
-      { 'body': { outline: '3px solid #80cbc4', outlineOffset: '-3px' } },
+      { '#QuickAccess-Menu': { outline: '4px solid #80cbc4', outlineOffset: '-4px' } },
       Target.QuickAccess,
     ),
   },
-  // ---- SteamOS / Steam Deck only (module class selectors) ----
+  // ---- Section targets (runtime class lookup — works on Desktop and SteamOS) ----
   {
     label:    'Library section',
     color:    '#ce93d8',
     scope:    'Target.Library',
-    platform: 'steamos',
+    platform: 'both',
     type:     'StyleProperties',
-    hint:     'SteamOS only — purple outline scoped to [class*="gamepadlibrary_GamepadLibrary_"]',
+    hint:     'Purple outline on the Library root container — scope resolved at runtime from webpack classes',
     toggle:   createStyleToggle(key,
       { outline: '3px solid #ce93d8', outlineOffset: '-3px' },
       Target.Library,
@@ -109,13 +108,13 @@ const examples = [
     label:    'Settings dialog',
     color:    '#ef9a9a',
     scope:    'Target.Settings',
-    platform: 'steamos',
+    platform: 'both',
     type:     'StyleSheet',
-    hint:     'SteamOS only — purple dashed outlines on child elements inside Settings',
+    hint:     'Pink tint on left nav column + lighter pink on right panel — scoped to .DialogContent_InnerWidth:has(.PageListColumn)',
     toggle:   createStyleToggle(key,
       {
-        '> *':     { outline: '1px dashed rgba(206,147,216,0.9)', outlineOffset: '-1px' },
-        '> * > *': { backgroundColor: 'rgba(206,147,216,0.07)' },
+        '.PageListColumn':       { outline: '3px solid rgba(239,154,154,0.3)', outlineOffset: '-3px' },
+        '.DialogContentTransition': { outline: '3px solid rgba(111, 232, 232, 0.3)', outlineOffset: '-3px' },
       },
       Target.Settings,
     ),
@@ -143,15 +142,14 @@ export function Page(_: { websocketUrl: string }) {
     send('getInfo').then((r: any) => setInfo(r)).catch(() => {});
   }, []);
 
-  const anyEnabled = examples.some(e => e.toggle.enabled);
+  const allEnabled = examples.every(e => e.toggle.enabled);
 
-  const handleToggle = (ex: typeof examples[number]) => {
-    ex.toggle.enabled ? ex.toggle.disable() : ex.toggle.enable();
-    update();
-  };
-
-  const handleDisableAll = () => {
-    examples.forEach(e => e.toggle.disable());
+  const handleMasterToggle = () => {
+    if (allEnabled) {
+      examples.forEach(e => e.toggle.disable());
+    } else {
+      examples.forEach(e => e.toggle.enable());
+    }
     update();
   };
 
@@ -205,73 +203,34 @@ export function Page(_: { websocketUrl: string }) {
         )}
 
         <Divider />
-        <SectionLabel>CSS INJECTION EXAMPLES</SectionLabel>
 
-        {examples.map(ex => (
-          <div
-            key={ex.label}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              padding: '8px 10px',
-              borderRadius: 6,
-              background: ex.toggle.enabled ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${ex.toggle.enabled ? ex.color + '55' : 'transparent'}`,
-              transition: 'background 0.15s, border-color 0.15s',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
-                <span style={{
-                  flexShrink: 0,
-                  width: 8, height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: ex.toggle.enabled ? ex.color : 'rgba(255,255,255,0.2)',
-                  transition: 'background-color 0.15s',
-                }} />
-                <span style={{ fontWeight: 'bold', fontSize: 13 }}>{ex.label}</span>
-                <span style={{
-                  fontSize: 10,
-                  padding: '1px 6px',
-                  borderRadius: 3,
-                  background: 'rgba(255,255,255,0.1)',
-                  color: 'var(--gpSystemLighterGrey)',
-                  whiteSpace: 'nowrap',
-                }}>{ex.type}</span>
-                {ex.platform === 'steamos' && (
-                  <span style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 3,
-                    background: 'rgba(30,100,255,0.25)',
-                    color: '#90caf9',
-                    whiteSpace: 'nowrap',
-                  }}>SteamOS only</span>
-                )}
-              </div>
-              <button
-                className={ex.toggle.enabled ? cls.btnPrimary : cls.btnSecondary}
-                style={{ fontSize: 11, padding: '3px 12px', width: 'auto', minWidth: 70, flexShrink: 0 }}
-                onClick={() => handleToggle(ex)}
-              >{ex.toggle.enabled ? 'Disable' : 'Enable'}</button>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--gpSystemLighterGrey)', paddingLeft: 16 }}>
-              {ex.hint}
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', paddingLeft: 16, fontFamily: 'monospace' }}>
-              {ex.scope}
-            </div>
-          </div>
-        ))}
-
-        {anyEnabled && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SectionLabel>CSS INJECTION EXAMPLES</SectionLabel>
           <button
-            className={cls.btnSecondary}
-            style={{ marginTop: 4, width: 'auto', alignSelf: 'flex-start' }}
-            onClick={handleDisableAll}
-          >Disable all</button>
-        )}
+            className={allEnabled ? cls.btnPrimary : cls.btnSecondary}
+            style={{ fontSize: 11, padding: '3px 12px', width: 'auto' }}
+            onClick={handleMasterToggle}
+          >{allEnabled ? 'Disable All' : 'Enable All'}</button>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '6px 12px',
+          padding: '6px 0',
+        }}>
+          {examples.map(ex => (
+            <div key={ex.label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{
+                flexShrink: 0,
+                width: 10, height: 10,
+                borderRadius: '50%',
+                backgroundColor: ex.color,
+              }} />
+              <span style={{ fontSize: 12, color: 'var(--gpSystemLighterGrey)', lineHeight: 1.3 }}>{ex.label}</span>
+            </div>
+          ))}
+        </div>
 
       </Focusable>
     </div>
