@@ -13,111 +13,91 @@ const { createStyleToggle, Target }   = condenser.css;
 
 // ---- CSS examples ----
 // Defined outside React so state survives navigation away and back.
-//
-// Cross-platform — stable IDs / aria-labels, and runtime webpack class lookup (Target.Library/Settings).
-// BPM only       — Target.QuickAccess / Target.MainMenu (separate popup windows that don't exist on Desktop).
+
+// Renders a visible highlight on any target without touching layout or blocking input.
+// box-shadow:inset works on full-viewport elements (unlike outline) and doesn't
+// create any overlay that could intercept gamepad scroll events.
+// Note: on full-viewport flex containers, flex children with opaque backgrounds
+// can paint over the inset shadow — use border+box-sizing:border-box in that case.
+function overlayBorder(color: string) {
+  return { boxShadow: `inset 0 0 0 3px ${color}` };
+}
+
+// The Steam Store is a cross-origin CEF window — JS cannot access its document.
+// CSS is injected via the backend using CDP instead.
+// _send is set once the Page component mounts.
+let _send: ((action: string, data?: unknown) => Promise<unknown>) | null = null;
+
+function createCdpToggle(css: string) {
+  let _enabled = false;
+  return {
+    enable()  { if (!_enabled) { _enabled = true;  _send?.('injectStoreCss', { css }); } },
+    disable() { if (_enabled)  { _enabled = false; _send?.('removeStoreCss'); } },
+    get enabled() { return _enabled; },
+  };
+}
 
 const examples = [
-  // ---- Cross-platform (stable IDs / aria-labels) ----
   {
-    label:    'Header bar',
-    color:    '#ff6b6b',
-    scope:    '#header',
-    platform: 'both',
-    type:     'StyleProperties',
-    hint:     'Targets the stable #header ID — red outline on the top status bar',
-    toggle:   createStyleToggle(key,
-      { outline: '3px solid #ff6b6b', outlineOffset: '-3px' },
-      { window: Target.BigPicture, scope: '#header' },
-    ),
-  },
-  {
-    label:    'Main content',
-    color:    '#4fc3f7',
-    scope:    '#Main',
-    platform: 'both',
-    type:     'StyleProperties',
-    hint:     'Targets the stable #Main ID — blue outline around the whole content area',
-    toggle:   createStyleToggle(key,
-      { outline: '3px solid #4fc3f7', outlineOffset: '-3px' },
-      { window: Target.BigPicture, scope: '#Main' },
-    ),
-  },
-  {
-    label:    'Recent Games',
-    color:    '#ffcc80',
-    scope:    '[aria-label="Recent Games"]',
-    platform: 'both',
-    type:     'StyleProperties',
-    hint:     'Targets [aria-label="Recent Games"] — amber outline on the game grid',
-    toggle:   createStyleToggle(key,
-      { outline: '3px solid #ffcc80', outlineOffset: '-3px' },
-      { window: Target.BigPicture, scope: '[aria-label="Recent Games"]' },
-    ),
-  },
-  {
-    label:    "What's New feed",
-    color:    '#81c784',
-    scope:    '[aria-label="What\'s New"]',
-    platform: 'both',
-    type:     'StyleProperties',
-    hint:     "Targets [aria-label=\"What's New\"] — green outline on the news feed",
-    toggle:   createStyleToggle(key,
-      { outline: '3px solid #81c784', outlineOffset: '-3px' },
-      { window: Target.BigPicture, scope: "[aria-label=\"What's New\"]" },
-    ),
-  },
-  {
-    label:    'Global (all windows)',
-    color:    '#e0e0e0',
-    scope:    'Target.Global',
-    platform: 'both',
-    type:     'StyleSheet',
-    hint:     'Targets body in BigPicture + MainMenu + QuickAccess — switches all text to monospace font across every BPM window',
-    toggle:   createStyleToggle(key,
-      { 'body': { fontFamily: 'monospace' } },
+    label:  'Global',
+    color:  '#e0e0e0',
+    toggle: createStyleToggle(key,
+      { body: { fontFamily: 'monospace' } },
       Target.Global,
     ),
   },
   {
-    label:    'Quick Access popup',
-    color:    '#80cbc4',
-    scope:    'Target.QuickAccess',
-    platform: 'both',
-    type:     'StyleSheet',
-    hint:     'Enable then open Quick Access — teal outline around the QAM panel',
-    toggle:   createStyleToggle(key,
-      { '#QuickAccess-Menu': { outline: '4px solid #80cbc4', outlineOffset: '-4px' } },
+    label:  'Header',
+    color:  '#ff6b6b',
+    toggle: createStyleToggle(key,
+      overlayBorder('#ff6b6b'),
+      { window: Target.BigPicture, scope: '#header' },
+    ),
+  },
+  {
+    label:  'Quick Access',
+    color:  '#80cbc4',
+    toggle: createStyleToggle(key,
+      { '#QuickAccess-Menu': overlayBorder('#80cbc4') },
       Target.QuickAccess,
     ),
   },
-  // ---- Section targets (runtime class lookup — works on Desktop and SteamOS) ----
   {
-    label:    'Library section',
-    color:    '#ce93d8',
-    scope:    'Target.Library',
-    platform: 'both',
-    type:     'StyleProperties',
-    hint:     'Purple outline on the Library root container — scope resolved at runtime from webpack classes',
-    toggle:   createStyleToggle(key,
-      { outline: '3px solid #ce93d8', outlineOffset: '-3px' },
+    label:  'Settings',
+    color:  '#ef9a9a',
+    toggle: createStyleToggle(key,
+      { '> .Panel': overlayBorder('#ef9a9a') },
+      { window: Target.BigPicture, scope: '[class*="_33vqr13-jdnjTkKKTh414f"]' },
+    ),
+  },
+  {
+    label:  'Home',
+    color:  '#81c784',
+    toggle: createStyleToggle(key,
+      overlayBorder('#81c784'),
+      Target.Home,
+    ),
+  },
+  {
+    label:  'Game Detail',
+    color:  '#ffb74d',
+    toggle: createStyleToggle(key,
+      overlayBorder('#ffb74d'),
+      Target.GameDetail,
+    ),
+  },
+  {
+    label:  'Library',
+    color:  '#ce93d8',
+    toggle: createStyleToggle(key,
+      overlayBorder('#ce93d8'),
       Target.Library,
     ),
   },
   {
-    label:    'Settings dialog',
-    color:    '#ef9a9a',
-    scope:    'Target.Settings',
-    platform: 'both',
-    type:     'StyleSheet',
-    hint:     'Pink tint on left nav column + lighter pink on right panel — scoped to .DialogContent_InnerWidth:has(.PageListColumn)',
-    toggle:   createStyleToggle(key,
-      {
-        '.PageListColumn':       { outline: '3px solid rgba(239,154,154,0.3)', outlineOffset: '-3px' },
-        '.DialogContentTransition': { outline: '3px solid rgba(111, 232, 232, 0.3)', outlineOffset: '-3px' },
-      },
-      Target.Settings,
-    ),
+    label:  'Store',
+    color:  '#ff8a65',
+    toggle: createCdpToggle(`body { box-shadow: inset 0 0 0 3px #ff8a65; }`),
   },
 ];
 
@@ -131,6 +111,7 @@ export function onUnmount(): void {
 // ---- Page ----
 export function Page(_: { websocketUrl: string }) {
   const send = condenser.plugin.useSend(key);
+  _send = send;
   const [_tick, setTick] = useState(0);
   const update = () => setTick(n => n + 1);
 
