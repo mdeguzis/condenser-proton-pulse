@@ -137,7 +137,7 @@ export function Page(_: { websocketUrl: string }) {
   const fmt = (s: number) => `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', color: 'white', overflowY: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', color: 'white', overflowY: 'auto', paddingTop: 40 }}>
       <button
         className={cls.btnSecondary}
         style={{ margin: '8px 16px', width: 'auto', alignSelf: 'flex-start' }}
