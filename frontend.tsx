@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 
 // ---- Plugin identity ----
-export const key   = 'condenser-plugin';
-export const title = 'Condenser Plugin';
-export const route = '/condenser-plugin/home';
+export const key   = 'proton-pulse';
+export const title = 'Proton Pulse';
+export const route = '/proton-pulse/home';
 
 // ---- Condenser API ----
 const { navigate, back }              = condenser.nav;

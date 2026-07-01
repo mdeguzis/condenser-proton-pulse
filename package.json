@@ -1,6 +1,8 @@
 {
-  "name": "condenser-plugin",
-  "version": "0.4.0",
+  "name": "condenser-proton-pulse",
+  "version": "0.1.0",
+  "description": "Condenser port of the decky-proton-pulse plugin.",
+  "repository": "github:mdeguzis/condenser-proton-pulse",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"

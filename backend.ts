@@ -1,113 +1,39 @@
-import os from 'os';
-import { CdpSession } from '../condenser-app/shared/cdp.js';
-
-// Each exported async function becomes a callable action from your frontend via useSend().
-// The function name is the action name: send('getInfo') calls getInfo() here.
-
-// Optional lifecycle hooks:
-// export async function onLoad(api: import('../condenser-app/shared/plugin').BackendAPI) {}
-// export async function onUnload() {}
-
-let clickCount = 0;
-
-// ---- Store CDP injection ----
-// The Steam Store (store.steampowered.com) is a separate CEF process at a different
-// origin — JavaScript in SharedJSContext cannot access its document. We reach it
-// directly via CDP from the Node.js backend instead.
+// Condenser backend for Proton Pulse.
 //
-// Because the Store window hides the BPM window (and therefore the condenser plugin
-// UI), we support a "pending" mode: the user enables the toggle in BPM, then opens
-// the Store — the backend polls for the CDP target and injects automatically.
+// Each exported async function is an RPC action callable from the frontend via
+// condenser.plugins.callPlugin('proton-pulse', { action, data }) -- which is what
+// platform().call (src/lib/condenserPlatform.ts) sends. The whole backend bundles
+// to a single backend.mjs.
+//
+// This replaces the Python backend (main.py + lib/*.py) from the Decky repo.
+// Network and system actions are ported here (Node fetch has no CORS limit);
+// the OS installers (proton-ge, compat tools, lsfg) and Steam library scan
+// are still stubbed -- see backend/stub.ts.
 
-const STORE_STYLE_ID = 'condenser-plugin-store';
-let _storeSession: CdpSession | null = null;
-let _pendingCss: string | null = null;
-let _pollTimer: ReturnType<typeof setInterval> | null = null;
+// ---- Ported actions ----
+export { get_system_info, get_protondb_systeminfo, copy_to_clipboard } from './backend/system.js';
+export { get_plugin_version, get_build_commit } from './backend/version.js';
+export { log_frontend_event, get_log_contents, set_log_level } from './backend/logging.js';
+export { fetchProxy, getProtonDbSummary } from './backend/net.js';
 
-async function connectStoreSession(): Promise<CdpSession | null> {
-  if (_storeSession) return _storeSession;
-  try {
-    const res = await fetch('http://localhost:8080/json');
-    const targets = await res.json() as { url: string; webSocketDebuggerUrl: string }[];
-    const target = targets.find(t => t.url.includes('store.steampowered.com'));
-    if (!target) return null;
-    _storeSession = await CdpSession.connect(target.webSocketDebuggerUrl);
-    _storeSession.onClose(() => {
-      _storeSession = null;
-      if (_pendingCss) startStorePoll();
-    });
-    // Re-inject on Store page navigation for this session (registered once per connection)
-    await _storeSession.send('Page.setBypassCSP', { enabled: true });
-    await _storeSession.send('Page.enable', {});
-    _storeSession.on('Page.loadEventFired', () => { applyStoreCss(); });
-    return _storeSession;
-  } catch { return null; }
+// ---- Not yet ported (structured stubs, grouped by reason) ----
+export {
+  check_for_update, get_update_status, apply_update, cancel_update, restart_plugin_loader,
+  install_compatibility_tool_archive, uninstall_compatibility_tool, check_proton_version_availability,
+  get_proton_ge_manager_state, cancel_proton_ge_install,
+  is_lsfg_vk_available, get_lsfg_vk_manager_state, cancel_lsfg_vk_install, uninstall_lsfg_vk,
+  get_game_source, get_game_platforms, get_grid_artwork, get_shortcut_name,
+  get_cef_debugging_status, set_cef_debugging_enabled,
+  export_metrics, get_game_requirements,
+} from './backend/stub.js';
+
+// ---- Debug / platform helpers ----
+export async function ping(data: { at?: number } = {}) {
+  return { pong: true, at: data.at ?? null, serverTime: Date.now() };
 }
 
-async function applyStoreCss(): Promise<boolean> {
-  const css = _pendingCss;
-  if (!css) return true;
-  const session = await connectStoreSession();
-  if (!session) return false;
-  try {
-    await session.send('Runtime.evaluate', {
-      expression: `(() => {
-        let el = document.getElementById(${JSON.stringify(STORE_STYLE_ID)});
-        if (!el) { el = document.createElement('style'); el.id = ${JSON.stringify(STORE_STYLE_ID)}; document.head.appendChild(el); }
-        el.textContent = ${JSON.stringify(css)};
-      })()`,
-      userGesture: true,
-    });
-    return true;
-  } catch {
-    _storeSession = null;
-    return false;
-  }
-}
-
-function startStorePoll() {
-  if (_pollTimer) return;
-  _pollTimer = setInterval(async () => {
-    if (!_pendingCss) { stopStorePoll(); return; }
-    const ok = await applyStoreCss();
-    if (ok) stopStorePoll();
-  }, 1000);
-}
-
-function stopStorePoll() {
-  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
-}
-
-export async function injectStoreCss({ css }: { css: string }) {
-  _pendingCss = css;
-  const ok = await applyStoreCss();
-  if (!ok) startStorePoll();
-}
-
-export async function removeStoreCss() {
-  _pendingCss = null;
-  stopStorePoll();
-  if (!_storeSession) return;
-  try {
-    await _storeSession.send('Runtime.evaluate', {
-      expression: `(() => { document.getElementById(${JSON.stringify(STORE_STYLE_ID)})?.remove(); })()`,
-      userGesture: true,
-    });
-  } catch { /* Store may have closed */ }
-}
-
-export async function getCount() {
-  return { count: clickCount };
-}
-
-export async function click() {
-  return { count: ++clickCount };
-}
-
-export async function getInfo() {
-  return {
-    platform: os.platform(),
-    uptime: os.uptime(),
-    memory: os.freemem(),
-  };
+// Focused Steam app id. Stubbed until the library-scan port wires the real source
+// (CDP/webpack). Home screen = 0.
+export async function getFocusedAppId() {
+  return { appId: 0 };
 }
