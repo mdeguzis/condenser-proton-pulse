@@ -33,15 +33,67 @@ src/lib/
 src/ui/             UI primitives that map @decky/ui -> condenser.ui
 ```
 
-## Build
+## Getting started
 
-Requires Node 24 LTS and the [`condenser-app`](https://github.com/condenser-team/condenser-app) repo cloned as a sibling.
+### Prerequisites
+
+- **Node 24 LTS** (`nvm use 24` or install from nodejs.org)
+- A local clone of [`condenser-app`](https://github.com/condenser-team/condenser-app) — the runtime the plugin loads into
+
+### 1. Clone condenser-app
+
+The dev script auto-discovers `condenser-app` when it's a sibling directory of this repo. That's the simplest layout:
 
 ```bash
-npm install
-npm run dev       # loads into condenser-app dev server with hot reload
-npm run build     # produces dist/frontend.js + dist/backend.mjs
+cd ~/src/decky-proton-pulse-project
+git clone https://github.com/condenser-team/condenser-app
 ```
+
+Result:
+
+```
+decky-proton-pulse-project/
+  condenser-app/            <- the runtime
+  condenser-proton-pulse/   <- this repo
+```
+
+Prefer a different location? Set `CONDENSER_APP_PATH=/absolute/or/relative/path/to/condenser-app` before running `npm run dev`.
+
+### 2. Install dependencies
+
+```bash
+cd condenser-proton-pulse
+npm install
+```
+
+### 3. Run the dev server
+
+```bash
+npm run dev
+```
+
+This starts the `condenser-app` dev server with this plugin auto-loaded and hot-reloaded on file save. The plugin registers under the key `condenser-proton-pulse` — the dev loader uses the containing directory name as the plugin ID, so `key` in `frontend.tsx` matches the repo directory. Human-facing title is still "Proton Pulse".
+
+### 4. Build for release
+
+```bash
+npm run build
+# dist/frontend.js + dist/backend.mjs
+```
+
+## Testing checklist
+
+Before committing changes to shared logic (`src/lib/*`), run the same tests the Decky repo runs (once test harness lands here). Meanwhile, smoke-test manually:
+
+1. `npm run dev` loads without errors and the plugin appears in the Condenser sidebar under **Proton Pulse**.
+2. The ported backend actions round-trip: from the frontend call `platform().call('get_plugin_version', {})` and confirm the version string.
+3. `npm run build` produces `dist/frontend.js` and `dist/backend.mjs` with no esbuild warnings.
+
+## Troubleshooting
+
+- **`Could not find condenser-app`**: sibling clone is missing, or `CONDENSER_APP_PATH` points at the wrong directory. Point at the `condenser-app` repo root (the one containing its `package.json`), not a subdirectory.
+- **`npm run dev` fails with a Node version error**: your active Node is < 24. `nvm use 24` or install Node 24 LTS.
+- **Plugin doesn't appear in the sidebar**: check the `key` export in `frontend.tsx` matches the directory name of this repo (`proton-pulse` here). Rename the directory or the export if they diverge.
 
 ## Parity with the Decky plugin
 

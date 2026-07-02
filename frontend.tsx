@@ -2,9 +2,12 @@
 import { useState, useEffect } from 'react';
 
 // ---- Plugin identity ----
-export const key   = 'proton-pulse';
+// key must match the containing directory name (the dev loader uses the
+// directory as the plugin ID). Our repo is `condenser-proton-pulse`, so
+// key is `condenser-proton-pulse`; the human-facing title stays clean.
+export const key   = 'condenser-proton-pulse';
 export const title = 'Proton Pulse';
-export const route = '/proton-pulse/home';
+export const route = '/condenser-proton-pulse/home';
 
 // ---- Condenser API ----
 const { navigate, back }              = condenser.nav;
